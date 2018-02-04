@@ -2529,7 +2529,7 @@
     <group>
         <name>STARTUP</name>
         <file>
-            <name>$PROJ_DIR$\..\startup\startup_stm32f10x_hd.s</name>
+            <name>$PROJ_DIR$\..\startup\startup_stm32f10x_cl.s</name>
         </file>
     </group>
     <group>

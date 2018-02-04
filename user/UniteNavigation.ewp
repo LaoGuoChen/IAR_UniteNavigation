@@ -341,7 +341,6 @@
                     <state>$PROJ_DIR$</state>
                     <state>$PROJ_DIR$\..\user</state>
                     <state>$PROJ_DIR$\..\lib\inc</state>
-                    <state>$PROJ_DIR$\..\lib\src</state>
                     <state>$PROJ_DIR$\..\cmiss</state>
                     <state>$PROJ_DIR$\..\startup</state>
                     <state>$PROJ_DIR$\..\sys</state>
@@ -2255,7 +2254,7 @@
     <group>
         <name>STARTUP</name>
         <file>
-            <name>$PROJ_DIR$\..\startup\startup_stm32f10x_hd.s</name>
+            <name>$PROJ_DIR$\..\startup\startup_stm32f10x_cl.s</name>
         </file>
     </group>
     <group>

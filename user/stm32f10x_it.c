@@ -1,25 +1,25 @@
 /**
-******************************************************************************
-* @file    Project/STM32F10x_StdPeriph_Template/stm32f10x_it.c 
-* @author  MCD Application Team
-* @version V3.5.0
-* @date    08-April-2011
-* @brief   Main Interrupt Service Routines.
-*          This file provides template for all exceptions handler and 
-*          peripherals interrupt service routine.
-******************************************************************************
-* @attention
-*
-* THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-* WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-* TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-* DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-* FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-* CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
-*
-* <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
-******************************************************************************
-*/
+  ******************************************************************************
+  * @file    Project/STM32F10x_StdPeriph_Template/stm32f10x_it.c 
+  * @author  MCD Application Team
+  * @version V3.5.0
+  * @date    08-April-2011
+  * @brief   Main Interrupt Service Routines.
+  *          This file provides template for all exceptions handler and 
+  *          peripherals interrupt service routine.
+  ******************************************************************************
+  * @attention
+  *
+  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
+  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
+  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
+  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
+  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  *
+  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
+  ******************************************************************************
+  */
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -29,30 +29,28 @@
 #include "bsp_uart3.h"
 #include "bsp_uart5.h"
 #include "app_conf.h"
-
-
+    
+    
 /*
 ****************************用户代码开始****************************************
 */   
-
+    
 #include <stdio.h>
 
 
+static uint8   uart1_recevieStart = 0; //开始接收的标志1有数据，
+static uint8   uart1_dataCount = 0;  
+static uint8   gps_start=0;
 
-
-
-static uint8    rtk_start=0;
-
-
+static uint8   uart2_recevieStart = 0;
+static uint8   uart2_dataCount = 0;   //接收数据计数
 
 static uint8   uart5_recevieStart = 0;
 static uint8   uart5_dataCount = 0;   //接收数据计数
 
-
-
 /*
 ********************************************************************************
-void USART1_IRQHandler(void)
+                         void USART1_IRQHandler(void)
 
 描述：     USART1接收中断
 参数：     
@@ -62,46 +60,46 @@ void USART1_IRQHandler(void)
 */
 void USART1_IRQHandler(void)
 {
-  static uint16   uart1_dataCount = 0; 
-  static uint8   uart1_recevieStart = 0;
-  static uint8  data=0;
-
-  
+ 
   if(USART_GetITStatus(USART1,USART_IT_RXNE) != RESET)
   { 
     USART_ClearITPendingBit(USART1,USART_IT_RXNE); //清除中断标志
+    u8 data = USART_ReceiveData(USART1);  
+  //  printf(" %x",data);
     
+    if(2 == uart1_recevieStart)
+    {
+      UART1_reviceBuf[uart1_dataCount++] = data;   
+    }
     
-    data= USART_ReceiveData(USART1); 
-    
-    
-     if(1 == uart1_recevieStart)
-     {
-       UART1_reviceBuf[uart1_dataCount++] = data; 
-     }
-     //判断帧头
-     if(0x55 == data && 0 == uart1_recevieStart)
-     {
-        uart1_dataCount=0; 
-        UART1_reviceBuf[uart1_dataCount++] = data;
-        uart1_recevieStart =1;
-     }
-     
+    if(0x55 == data && 0 == uart1_recevieStart && 0 == UART1_reviceFlag)   //信息头
+    {
+      uart1_recevieStart = 1;
+      
+
+    }else if(0xff == data && 1 == uart1_recevieStart) //判断是不是完整数据，即第一组数据
+    {
+      uart1_recevieStart = 2;
+      UART1_reviceBuf[0] = 0x55; //保存完整数据
+      UART1_reviceBuf[1] = data;
+      uart1_dataCount = 2;
    
-    //   printf(" %x",data);
+    }else if(1 == uart1_recevieStart)
+    {
+      uart1_recevieStart = 0;
+    }
     
     //接收完成
-    if(GPS_DATA_LEN  == uart1_dataCount)
-    { 
-      if(rtk_start>3)  //RTK2接收组数据以后开始处理数据
+    if(125 == uart1_dataCount)
+    {
+      if(0 == UART2_dataNewFlag){gps_start=0;}
+      if(1 == gps_start)
       {
-        UART1_reviceFlag = 1;
-        USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);     //接收到125字节后停止接收
-        
-      } else{
-        //		printf("uart2还没有接收到数据\n");
-      }
-      uart1_recevieStart =0;
+          UART1_reviceFlag = 1;
+      } 
+      uart1_dataCount = 0;
+   //   printf("\n");
+      
     }
     
   }
@@ -118,81 +116,67 @@ void USART2_IRQHandler(void)
 */
 void USART2_IRQHandler(void)
 {
-  static uint16   uart2_dataCount = 0;   //接收数据计数	
-  static uint8   uart2_recevieStart = 0;
-  static uint8    data=0;
+  
   if(USART_GetITStatus(USART2,USART_IT_RXNE) != RESET)
   { 
-    
     USART_ClearITPendingBit(USART2,USART_IT_RXNE); //清除中断标志
-    
-    
-     data= USART_ReceiveData(USART2); 
-     
-     if(1 == uart2_recevieStart)
-     {
-       UART2_reviceBuf[uart2_dataCount++] = data; 
-     }
-     //判断帧头
-     if(0x55 == data && 0 == uart2_recevieStart)
-     {
-       
-       //定位到存储位置
-       if(0 == UART2_dataNewFlag)
-       {
-         uart2_dataCount = 0;//下一组存储起点
-       }else if(1 == UART2_dataNewFlag)
-       {
-         uart2_dataCount = GPS_DATA_LEN;//存储起点
-         
-       }else if(2 == UART2_dataNewFlag)
-       {
-         uart2_dataCount = GPS_DATA_LEN*2;//存储起点
-         
-       } else if(3 == UART2_dataNewFlag)
-       {
-          uart2_dataCount = 0;//下一组存储起点
-       }
-       
-       UART2_reviceBuf[uart2_dataCount++] = data; 
-       uart2_recevieStart =1;
+    uint8 data = USART_ReceiveData(USART2);  
+  //    printf(" %x",data);
       
-     }
-     
- //   printf(" %x",UART2_reviceBuf[uart2_dataCount-1]);  
-    
-    //接收完成
-    if(GPS_DATA_LEN  == uart2_dataCount || GPS_DATA_LEN *2 == uart2_dataCount || GPS_DATA_LEN *3 == uart2_dataCount)
+    if(2 == uart2_recevieStart)
     {
-   //   printf("\n");
+      UART2_reviceBuf[uart2_dataCount++] = data;   
+    }
+    
+    if(0x55 == data && 0 == uart2_recevieStart && 0 == UART2_reviceFlag)   //信息头
+    {
+      uart2_recevieStart = 1;
       
-      //更新最新组标志
+      
+    }else if(0xff == data && 1 == uart2_recevieStart) //判断是不是完整数据，即第一组数据
+    {
+      
       if(0 == UART2_dataNewFlag)
       {
-        UART2_dataNewFlag =1;
+        UART2_dataNewFlag = 1;
+        uart2_dataCount = 0;
         
-      }else if(1 == UART2_dataNewFlag)
+      }
+         
+      UART2_reviceBuf[uart2_dataCount++] = 0x55; //保存完整数据   
+      UART2_reviceBuf[uart2_dataCount++] = data;
+      uart2_recevieStart = 2;
+    
+      
+    }else if(1 == uart2_recevieStart)
+    {
+      uart2_recevieStart = 0;
+    }
+    
+    //接收完成
+    if(125 == uart2_dataCount || 250 == uart2_dataCount)
+    {
+   // printf("\n end2\n");
+      
+      if(1 == UART2_dataNewFlag)
       {
-        UART2_dataNewFlag = 2;   
+        UART2_dataNewFlag = 2;
+        uart2_dataCount = 125;
         
       }else if(2 == UART2_dataNewFlag)
       {
-        UART2_dataNewFlag = 3;
-        
-      } else if(3 == UART2_dataNewFlag)
-      {
         UART2_dataNewFlag = 1;
+        uart2_dataCount = 0;
+        gps_start=1;
       }
-      
-      
-      rtk_start++; //接收技术>3时uart1才开始处理数据
-      uart2_recevieStart =0;
-      UART2_reviceFlag=1;
-      USART_ITConfig(USART2, USART_IT_RXNE, DISABLE); 
+      if(1 == gps_start){
+          UART2_reviceFlag = 1;  
+      }
       
     }
     
-  } 
+  }
+  
   
 }
 
@@ -207,11 +191,11 @@ void USART3_IRQHandler(void)
 */
 void USART3_IRQHandler(void)
 {
-  static u8 data;
+  
   if(USART_GetITStatus(USART3,USART_IT_RXNE) != RESET)
   { 
     USART_ClearITPendingBit(USART3,USART_IT_RXNE); //清除中断标志
-    data = USART_ReceiveData(USART3);  
+    uint8 data = USART_ReceiveData(USART3);  
     
     
   }
@@ -219,7 +203,7 @@ void USART3_IRQHandler(void)
 
 /*
 ********************************************************************************
-void UART5_IRQHandler(void)
+                         void UART5_IRQHandler(void)
 
 描述：     UART5接收中断
 参数：     
@@ -228,13 +212,12 @@ void UART5_IRQHandler(void)
 */
 void UART5_IRQHandler(void)
 {
-  static u8 data;
   
   if(USART_GetITStatus(UART5,USART_IT_RXNE) != RESET)
   { 
     USART_ClearITPendingBit(UART5,USART_IT_RXNE); //清除中断标志
-    data = USART_ReceiveData(UART5);   
-    
+    u8 data = USART_ReceiveData(UART5);   
+  
     
     if(2 == uart5_recevieStart)
     {
@@ -244,15 +227,15 @@ void UART5_IRQHandler(void)
     if(0x55 == data && 0 == uart5_recevieStart && 0 == UART5_reviceFlag)   //信息头
     {
       uart5_recevieStart = 1;
-      
-      
+    
+
     }else if(0x53 == data && 1 == uart5_recevieStart)
     {
       UART5_reviceBuf[0] = 0x55;
       UART5_reviceBuf[1] = data;
       uart5_dataCount = 2; 
       uart5_recevieStart = 2;
-      
+       
     }
     //接收完成
     if(11 == uart5_dataCount)
@@ -272,8 +255,8 @@ void UART5_IRQHandler(void)
 
 
 /** @addtogroup STM32F10x_StdPeriph_Template
-* @{
-*/
+  * @{
+  */
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -291,19 +274,19 @@ void UART5_IRQHandler(void)
 /******************************************************************************/
 
 /**
-* @brief  This function handles NMI exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles NMI exception.
+  * @param  None
+  * @retval None
+  */
 void NMI_Handler(void)
 {
 }
 
 /**
-* @brief  This function handles Hard Fault exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles Hard Fault exception.
+  * @param  None
+  * @retval None
+  */
 void HardFault_Handler(void)
 {
   /* Go to infinite loop when Hard Fault exception occurs */
@@ -313,10 +296,10 @@ void HardFault_Handler(void)
 }
 
 /**
-* @brief  This function handles Memory Manage exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles Memory Manage exception.
+  * @param  None
+  * @retval None
+  */
 void MemManage_Handler(void)
 {
   /* Go to infinite loop when Memory Manage exception occurs */
@@ -326,10 +309,10 @@ void MemManage_Handler(void)
 }
 
 /**
-* @brief  This function handles Bus Fault exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles Bus Fault exception.
+  * @param  None
+  * @retval None
+  */
 void BusFault_Handler(void)
 {
   /* Go to infinite loop when Bus Fault exception occurs */
@@ -339,10 +322,10 @@ void BusFault_Handler(void)
 }
 
 /**
-* @brief  This function handles Usage Fault exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles Usage Fault exception.
+  * @param  None
+  * @retval None
+  */
 void UsageFault_Handler(void)
 {
   /* Go to infinite loop when Usage Fault exception occurs */
@@ -352,70 +335,70 @@ void UsageFault_Handler(void)
 }
 
 /**
-* @brief  This function handles SVCall exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles SVCall exception.
+  * @param  None
+  * @retval None
+  */
 void SVC_Handler(void)
 {
 }
 
 /**
-* @brief  This function handles Debug Monitor exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles Debug Monitor exception.
+  * @param  None
+  * @retval None
+  */
 void DebugMon_Handler(void)
 {
 }
 
 /**
-* @brief  This function handles PendSVC exception.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles PendSVC exception.
+  * @param  None
+  * @retval None
+  */
 void PendSV_Handler(void)
 {
 }
 
 /**
-* @brief  This function handles SysTick Handler.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles SysTick Handler.
+  * @param  None
+  * @retval None
+  */
 void SysTick_Handler(void)
 {
 }
 
 
 /**
-* @brief  EXTI1_IRQHandler
-*         This function handles External line 1 interrupt request.
-* @param  None
-* @retval None
-*/
+  * @brief  EXTI1_IRQHandler
+  *         This function handles External line 1 interrupt request.
+  * @param  None
+  * @retval None
+  */
 void EXTI1_IRQHandler(void)
 {
   if(EXTI_GetITStatus(EXTI_Line1) != RESET)
   {
-    
-    EXTI_ClearITPendingBit(EXTI_Line1);
+  
+      EXTI_ClearITPendingBit(EXTI_Line1);
   }
 }
 /**
-* @brief  OTG_FS_IRQHandler
-*          This function handles USB-On-The-Go FS global interrupt request.
-*          requests.
-* @param  None
-* @retval None
-*/
+  * @brief  OTG_FS_IRQHandler
+  *          This function handles USB-On-The-Go FS global interrupt request.
+  *          requests.
+  * @param  None
+  * @retval None
+  */
 #ifdef USE_USB_OTG_FS
 void OTG_FS_IRQHandler(void)
 #else
 void OTG_HS_IRQHandler(void)
 #endif
 {
-  
+
 }
 
 /******************************************************************************/
@@ -426,10 +409,10 @@ void OTG_HS_IRQHandler(void)
 /******************************************************************************/
 
 /**
-* @brief  This function handles PPP interrupt request.
-* @param  None
-* @retval None
-*/
+  * @brief  This function handles PPP interrupt request.
+  * @param  None
+  * @retval None
+  */
 /*void PPP_IRQHandler(void)
 {
 }*/

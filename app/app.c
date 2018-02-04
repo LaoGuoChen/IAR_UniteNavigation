@@ -14,3 +14,29 @@
 */
 
 #include "app_conf.h"
+
+
+
+/*
+********************************************************************************
+                          void WDG_Config(uint8_t WDG_time)
+
+描述：     独立看门狗
+参数：     喂狗时间，单位s
+返回值：   无
+********************************************************************************
+*/
+
+void WDG_Config(uint8_t WDG_time)
+{
+  if(RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET)
+  {
+    RCC_ClearFlag();
+  }
+  IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable); //使能寄存器，写功能
+  IWDG_SetPrescaler(IWDG_Prescaler_256);        //设置 IWDG 预分频值
+  IWDG_SetReload((40000/256)*WDG_time);         //设置 40K，256分频 重载40000/256 = 1s
+ 
+  IWDG_ReloadCounter();                         //使能重载
+  IWDG_Enable();                               //使能 IWDG
+}
