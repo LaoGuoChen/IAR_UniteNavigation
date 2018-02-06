@@ -59,11 +59,16 @@ typedef unsigned  int uint32;
 
 /*
 @ 两个RTK传输数据有时差，所以选RTK1作为参考，RTK2与RTK1同一时间的位置通过推算
+
 */
-#define RTK1_REV_LEN              125     //接收RTK数据缓存大小
-#define RTK2_REV_LEN              250     //接收RTK数据缓存大小，两组。
-#define IMU_REV_LEN               64      //接收陀螺仪数据缓存大小
-#define PI                        3.1416 //
+
+#define   RTK_DATA_LEN              125     //接收RTK数据缓存大小
+#define   IMU_REV_LEN               64      //接收陀螺仪数据缓存大小
+#define   PI                        3.14159265358 //
+#define  INM_LON_LAT_SCALE          100000000.0 //经纬度转换成定点小数的比例系数
+
+#define RTK_POS_LLH_P      53
+#define RTK_T_TIME         100 //RTK发数据时间间隔
 
 //利用union特性转换
 typedef union{
@@ -74,35 +79,50 @@ typedef union{
 
 typedef union{
     
-    uint32  data_uint32;
+    double data_float;
     uint8   data_byte[4];
+ }byteToFloat;
+
+ typedef union{
+    
+    uint16_t  data_uint16;
+    uint8     data_byte[2];
+   
+ }byteToUint16;
+
+typedef union{
+    
+    int32_t  data_int32;
+    uint8    data_byte[4];
+ }byteToInt32;
+
+typedef union{
+    
+    uint32_t  data_uint32;
+    uint8    data_byte[4];
  }byteToUint32;
 
-typedef enum 
-{
-	RTK_SINGLE,
-	RTK_FLOAT,
-	RTK_FIX,
-	RTK_RECKON
-}RTK_State;
+
 
 typedef struct
 {
-	unsigned short wn;//GPS周数
-	unsigned int tow;//周内毫秒数
-}GPSTime;
+  uint8_t       rtk_state;
+  byteToInt32   longitude;//定点小数形式：毫弧度*INM_LON_LAT_SCALE
+  byteToInt32   latitude;//定点小数形式：毫弧度*INM_LON_LAT_SCALE
+  byteToFloat   altitude;
+  byteToFloat   roll;
+  byteToFloat   pitch;
+  byteToFloat   yaw;
+  byteToUint16  gps_weeks;
+  byteToUint32  gps_ms;
+  
+}INM_Data;
 
-typedef struct
-{
-	RTK_State rtkState;
-	double longitude;//角度制
-	double latitude;//角度制
-	double altitude;//单位米
-	GPSTime time;
-}GPSFrame;
 
-extern uint8 UART1_reviceBuf[RTK1_REV_LEN];
-extern uint8 UART2_reviceBuf[RTK2_REV_LEN];
+
+
+extern uint8 UART1_reviceBuf[RTK_DATA_LEN];
+extern uint8 UART2_reviceBuf[RTK_DATA_LEN*2];
 extern uint8 UART5_reviceBuf[IMU_REV_LEN];
 
 extern volatile uint8 UART2_dataNewFlag;//需要保存两组数据，0表示还没接收数据，1表示第一组是最新数据，2表示第二组是最新数据

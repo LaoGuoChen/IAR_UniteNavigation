@@ -154,14 +154,14 @@ void USART2_IRQHandler(void)
     }
     
     //接收完成
-    if(125 == uart2_dataCount || 250 == uart2_dataCount)
+    if(RTK_DATA_LEN == uart2_dataCount || RTK_DATA_LEN*2 == uart2_dataCount)
     {
    // printf("\n end2\n");
       
       if(1 == UART2_dataNewFlag)
       {
         UART2_dataNewFlag = 2;
-        uart2_dataCount = 125;
+        uart2_dataCount = RTK_DATA_LEN;
         
       }else if(2 == UART2_dataNewFlag)
       {
@@ -169,6 +169,8 @@ void USART2_IRQHandler(void)
         uart2_dataCount = 0;
         gps_start=1;
       }
+      
+      
       if(1 == gps_start){
           UART2_reviceFlag = 1;  
       }

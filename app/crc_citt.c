@@ -66,7 +66,7 @@
 返回值：   crc校验值
 ********************************************************************************
 */
-unsigned short crc16_ccitt_table(const unsigned char *buf, unsigned int len, unsigned short crc) 
+unsigned short CRC16_ccitt_table(const unsigned char *buf, unsigned int len, unsigned short crc) 
   { 
     unsigned int i; 
     for( i= 0; i < len; i++) 
@@ -83,7 +83,7 @@ unsigned short crc16_ccitt_table(const unsigned char *buf, unsigned int len, uns
  * Xorout:  0x0000 
  * Alias:   CRC-CCITT,CRC-16/CCITT-TRUE,CRC-16/KERMIT 
  *****************************************************************************/  
-uint16_t crc16_ccitt(uint8_t *data, uint16_t length)  
+uint16_t CRC16_ccitt(uint8_t *data, uint16_t length)  
 {  
     uint8_t i;  
     uint16_t crc = 0;        // Initial value  

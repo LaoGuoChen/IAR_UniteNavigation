@@ -26,7 +26,7 @@
 ********************************************************************************
 */
 
-uint16_t crc16_ccitt_table(const unsigned char *buf, unsigned int len, unsigned short crc);
-uint16_t crc16_ccitt(uint8_t *data, uint16_t length);
+uint16_t CRC16_ccitt_table(const unsigned char *buf, unsigned int len, unsigned short crc);
+uint16_t CRC16_ccitt(uint8_t *data, uint16_t length);
 
 #endif 
