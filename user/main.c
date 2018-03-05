@@ -151,6 +151,7 @@ void main()
   //初始化看门狗 喂狗时间4s
   WDG_Config(4);
  
+  
         
   while(1)
   {      
@@ -314,11 +315,14 @@ static void getRTK_GPS(void){
   rtk_b_fix2 = UART2_reviceBuf[RTK_POS_LLH_P  + RTK_DATA_LEN + 39];
   
   //判断是否FIX
-  if((rtk_a_fix & 0x07) != 0 && (rtk_b_fix1 & 0x07) != 0 && (rtk_b_fix2 & 0x07) != 0)
+  if((rtk_a_fix & 0x01) == 0x01 && (rtk_b_fix1 & 0x01) == 0x01 && (rtk_b_fix2 & 0x01) == 0x01)
   {
     rtk_flag = 1;
+  }else{
+    rtk_flag=0;
   }
 
+//  print("fix=%x fix1=%x fix2=%x", rtk_a_fix, rtk_b_fix1, rtk_b_fix2);
   
   //转化数据
   rtk_data_p = RTK_POS_LLH_P + 6; //时间地址
@@ -564,7 +568,7 @@ static void sendRTK_Data(void){
     sendData[send_p++] = dir_radian.data_byte[i];
   }
 */
-  sendData[send_p++] = rtk_flag;
+  sendData[send_p++] = inm_data.rtk_state;
   //经度
   for(i=0;i<4;i++)
   {

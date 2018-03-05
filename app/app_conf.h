@@ -79,7 +79,7 @@ typedef union{
 
 typedef union{
     
-    double data_float;
+    float   data_float;
     uint8   data_byte[4];
  }byteToFloat;
 
