@@ -158,7 +158,7 @@ void main()
     
    #if 1 
     //A组为参考，A接收到数据开始计算RTK组合导航位置
-    if(1 == UART1_reviceFlag && UART2_dataNewFlag != 0 && 1 == UART1_reviceFlag)
+    if(1 == UART1_reviceFlag && UART2_dataNewFlag != 0 && 1 == UART2_reviceFlag)
     {
         IWDG_ReloadCounter();  //喂狗
        
@@ -183,7 +183,7 @@ void main()
       //    USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);   
           Delay_Ms(13);
      //     USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);   
-          printf("crc1校验失败\n");
+       //   printf("crc1校验失败\n");
          
            
         }
@@ -194,12 +194,12 @@ void main()
        //   USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);   
           Delay_Ms(13);
        //   USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);   
-          printf("crc2校验失败\n");
+       //   printf("crc2校验失败\n");
            UART2_dataNewFlag=0;
         }
         if(crc3 != (UART2_reviceBuf[RTK_POS_LLH_P+RTK_DATA_LEN+40] | (UART2_reviceBuf[RTK_POS_LLH_P+RTK_DATA_LEN+41]<<8)))
         {
-          printf("crc3校验失败\n");
+       //   printf("crc3校验失败\n");
             //延时，处理数据被截断的情况
       //    USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);   
           Delay_Ms(13);
@@ -262,8 +262,8 @@ void main()
   //     printf("GPS_4 纬度：%f 经度：%f 海拔：%f 标志：%d\n",gpsb_position[0].data_double,
   //             gpsb_position[1].data_double,gpsb_position[2].data_double,rtk_flag);
         
-        printf("GPS_5 经度=%d 纬度=%d 海拔：%f 角度=%f 时间=%d 标志=%d 时间差=%d\n",inm_data.longitude.data_int32,inm_data.latitude.data_int32,
-                inm_data.altitude.data_float,inm_data.yaw.data_float,inm_data.gps_ms.data_uint32,inm_data.rtk_state,change_ms);
+  //      printf("GPS_5 经度=%d 纬度=%d 海拔：%f 角度=%f 时间=%d 标志=%d 时间差=%d\n",inm_data.longitude.data_int32,inm_data.latitude.data_int32,
+  //              inm_data.altitude.data_float,inm_data.yaw.data_float,inm_data.gps_ms.data_uint32,inm_data.rtk_state,change_ms);
         
      //   printf("GPS_5 标志：%d 角度：%f 纬度：%f 经度：%f 海拔：%f \n",rtk_flag,dir_radian.data_double,gpsu_position[0].data_double,
      //          gpsu_position[1].data_double,gpsu_position[2].data_double);
@@ -315,7 +315,7 @@ static void getRTK_GPS(void){
   rtk_b_fix2 = UART2_reviceBuf[RTK_POS_LLH_P  + RTK_DATA_LEN + 39];
   
   //判断是否FIX
-  if((rtk_a_fix & 0x01) == 0x01 && (rtk_b_fix1 & 0x01) == 0x01 && (rtk_b_fix2 & 0x01) == 0x01)
+  if((rtk_a_fix & 0x07) == 0x01 && (rtk_b_fix1 & 0x07) == 0x01 && (rtk_b_fix2 & 0x07) == 0x01)
   {
     rtk_flag = 1;
   }else{
@@ -476,7 +476,7 @@ static void getRTK_GPS(void){
   if(change_ms>100)
   {
     gps_data_flag = 0;
-    printf("时间差计算错误change_ms=%d",change_ms);
+   // printf("时间差计算错误change_ms=%d",change_ms);
   }
  //经纬度超出范围
   if((gpsbn_position[0].data_double > 90 && gpsbn_position[0].data_double < 0)
@@ -497,10 +497,11 @@ static void getRTK_GPS(void){
   
   if(1 == gps_data_flag)
   {
-    //推算B当前经纬度海拔计算
+    //推算B当前经纬度海拔
     gpsb_position[0].data_double = gpsbn_position[0].data_double + ((gpsbn_position[0].data_double - gpsbo_position[0].data_double)/RTK_T_TIME )*change_ms; //纬度
-    gpsb_position[1].data_double = gpsbn_position[1].data_double + ((gpsbn_position[1].data_double*cos(gpsbn_position[0].data_double*PI/180) 
-                                                                     - gpsbo_position[1].data_double*cos(gpsbo_position[0].data_double*PI/180))/RTK_T_TIME )*change_ms;                    //经度    
+  //  gpsb_position[1].data_double = gpsbn_position[1].data_double + ((gpsbn_position[1].data_double*cos(gpsbn_position[0].data_double*PI/180) 
+  //                                                                   - gpsbo_position[1].data_double*cos(gpsbo_position[0].data_double*PI/180))/RTK_T_TIME )*change_ms;//经度     
+    gpsb_position[1].data_double = gpsbn_position[1].data_double + ((gpsbn_position[1].data_double - gpsbo_position[1].data_double)/RTK_T_TIME )*change_ms; 
     gpsb_position[2].data_double = gpsbn_position[2].data_double + ((gpsbn_position[2].data_double - gpsbo_position[2].data_double)/RTK_T_TIME )*change_ms; //海拔
     
     //  
@@ -510,12 +511,12 @@ static void getRTK_GPS(void){
       gpsu_position[i].data_double = (gpsb_position[i].data_double + gpsa_position[i].data_double)/2;
     }
     
-    //计算方位，默认A指向B，车身A在后，B在前。目前只考虑在北半球
+    //计算方位，默认A指向B，车身A在后，B在前。
     //使用atan2
     
     double x,y;
     y = gpsa_position[0].data_double - gpsb_position[0].data_double;
-    x = gpsa_position[1].data_double*cos(gpsa_position[0].data_double*PI/180) - gpsb_position[1].data_double*cos(gpsb_position[0].data_double*PI/180);
+    x = (gpsa_position[1].data_double-gpsb_position[1].data_double)*cos(gpsa_position[0].data_double*PI/180);
     dir_radian.data_double = atan2(y,x)*180/PI;
   }else
   {
