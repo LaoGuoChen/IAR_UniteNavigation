@@ -101,7 +101,7 @@ byteToDouble gpsbo_position[3]; //RTK编号B上一组的gps位置 0纬度 1经度 2海拔
 
 byteToDouble gpsb_position[3]; //B编号推算的位置 0经度1纬度2海拔
 
-uint8 rtk_flag;         //双定位有效标志0无效，bit0=1,RTK-A有效，bit1=1,RTK-B定位有效
+uint8 rtk_flag;         //双定位有效标志1无效，0 FIX
 uint8 rtk_data_p;        //数据指针      
 
 uint32 change_ms;     //RTK的A组离最近一组数据的时间
@@ -111,6 +111,7 @@ INM_Data inm_data;//组合导航帧数据
 
 
 /*方向定义，板子上uart1对应rtkA，uart2对应rtkB，BA向量为车头方向，BA与地图x正方夹角为0时对应正东方（x周正方向为东方）
+uart1-A uart2->B
 @当 (x, y) 在第一象限, 0 < θ < 90.        东北方向
 @当 (x, y) 在第二象限 90< θ≤180         西北方向
 @当 (x, y) 在第三象限, -180< θ < -90.     西南方向
@@ -247,7 +248,7 @@ void main()
           inm_data.altitude.data_float  = (float)(gpsu_position[2].data_double); //海拔
           inm_data.roll.data_float = 0;   //
           inm_data.pitch.data_float =0;    //
-          inm_data.yaw.data_float = (float)dir_radian.data_double;    
+          inm_data.yaw.data_float = (float)(dir_radian.data_double*PI/180);    
           inm_data.gps_ms.data_uint32=gpsa_time_ms.data_uint32;//周时间
           inm_data.gps_weeks.data_uint16 = 0;                 //周毫秒       
                 
@@ -285,7 +286,7 @@ void main()
             err[i] = 0xfe;
         }
 
-        UART3_sendData(41,err);
+      //  UART3_sendData(41,err);
         
       }
       
@@ -317,9 +318,9 @@ static void getRTK_GPS(void){
   //判断是否FIX
   if((rtk_a_fix & 0x07) == 0x01 && (rtk_b_fix1 & 0x07) == 0x01 && (rtk_b_fix2 & 0x07) == 0x01)
   {
-    rtk_flag = 1;
+    rtk_flag = 0;
   }else{
-    rtk_flag=0;
+    rtk_flag=1;
   }
 
 //  print("fix=%x fix1=%x fix2=%x", rtk_a_fix, rtk_b_fix1, rtk_b_fix2);
@@ -511,7 +512,7 @@ static void getRTK_GPS(void){
       gpsu_position[i].data_double = (gpsb_position[i].data_double + gpsa_position[i].data_double)/2;
     }
     
-    //计算方位，默认A指向B，车身A在后，B在前。
+    //计算方位，默认B指向A，车身B在后，A在前。
     //使用atan2
     
     double x,y;
@@ -549,7 +550,7 @@ static void sendRTK_Data(void){
   
   uint8 send_p = 0;
   sendData[send_p++] = 0x55;
-  sendData[send_p++] = 0;    
+  //sendData[send_p++] = 0;    
 /*  
   sendData[send_p++] = rtk_flag;
   sendData[send_p++] = gpsa_time_ms.data_byte[0];
@@ -613,13 +614,15 @@ static void sendRTK_Data(void){
   }
    
   
-  sendData[1] = send_p-1;   //有效数据长度,不含校验位和帧头
+  //sendData[1] = send_p-1;   //有效数据长度,不含校验位和帧头
+  
+  int len = send_p-1;   //有效数据长度,不含校验位和帧头
   
   
   uint16_t check=0;
   
-  check = CRC16_ccitt(&sendData[1], sendData[1]);
-  
+  //check = CRC16_ccitt(&sendData[1], sendData[1]);
+  check = CRC16_ccitt(&sendData[1], len);
   //校验位
   sendData[send_p++] = check & 0xff;
   sendData[send_p]   = (check>>8) & 0xff;
@@ -632,7 +635,7 @@ static void sendRTK_Data(void){
     Delay_Ms(3);
   }
   Delay_Ms(3);
-  UART3_sendData(sendData[1]+3-fra*20,&sendData[fra*20]);
+  UART3_sendData(len+3-fra*20,&sendData[fra*20]);
 }
 
 
